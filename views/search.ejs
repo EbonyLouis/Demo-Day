@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <link rel="stylesheet" href="css/search.css">
+  </head>
+  <body>
+    <div class="cntr">
+    	<div class="cntr-innr">
+        	<p>Enter Childs Name below</p>
+
+
+
+
+        <form action="/patientSearch" method="post">
+
+          <input id="inpt_search" name="name" type="text" placeholder="Child's name">
+
+          <button id="searchButton" type="submit" name="button">Search</button>
+        </form>
+
+
+<% if(patientList){%>
+
+<h2>patients:</h2>
+
+<ul>
+  <% for(var i=0; i< patientList.length; i++) {%>
+  <a href="/patient?name=<%=patientList[i].name %>">
+    <li class="patientList">
+      <span><%= patientList[i].name %></span>
+      <span><%= patientList[i].DOB %></span>
+      <span><%= patientList[i].parentname %></span>
+      <span><%= patientList[i].number %></span>
+    </li>
+  </a>
+  <% } %>
+</ul>
+<% } %>
+    	</div>
+    </div>
+
+<script src="js/search.js"></script>
+  </body>
+</html>

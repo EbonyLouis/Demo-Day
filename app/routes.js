@@ -1,41 +1,74 @@
 module.exports = function(app, passport, db) {
 
-// normal routes =================================================
+  // normal routes =================================================
 
 
 
-    // show the home page (will also have our login links)
-    app.get('/', function(req, res) {
-        res.render('login.ejs', {message: ""});
-    });
+  // show the home page (will also have our login links)
+  app.get('/', function(req, res) {
+    res.render('login.ejs', {message: ""});
+  });
 
-    app.get('/signup', function(req, res) {
-        res.render('signup.ejs', {message: ""});
-    });
+  app.get('/signup', function(req, res) {
+    res.render('signup.ejs', {message: ""});
+  });
+  app.get('/patientSearch', function(req, res) {
+    res.render('search.ejs', {patientList: null});
+  });
+  // app.get('/test', function(req, res) {
+  //     res.render('search.ejs', {message: ""});
+  // });
 
-    // PROFILE SECTION =========================
-    app.get('/profile', isLoggedIn, function(req, res) {
-        db.collection('messages').find().toArray((err, result) => {
-          if (err) return console.log(err)
-          res.render('profile.ejs', {
-            user : req.user
-          })
-        })
-    });
+  // patient info grabbing the info from the database to render on the page
+  app.post('/patientSearch', function(req, res) {
+    db.collection('patients').find({name: req.body.name}).toArray((err, result) => {
+      if (err) return console.log(err)
+      res.render('search.ejs', {
+        // user : req.user,
+        patientList: result
+      })
+    })
+  });
 
-    // LOGOUT ==============================
-    app.get('/logout', function(req, res) {
-        req.logout();
-        res.redirect('/');
-    });
+  // single patient page information below to find the page
 
-//
+  app.get('/patient', isLoggedIn, function(req, res) {
+    console.log('patient name', req.query.name)
+    db.collection('patients').findOne({name:req.query.name},(err, result) => {
+      console.log('patient:', result)
+      if (err) return console.log(err)
+      res.render('patientprofile.ejs', {
+        patient: result
+      })
+    })
+  });
 
- // board routes ===============================================================
 
-    app.post('/messages', (req, res) => {
-      db.collection('messages').save({name: req.body.name, msg: req.body.msg,
-        thumbUp: 0, thumbDown:0}, (err, result) => {
+
+
+  // PROFILE SECTION =========================
+  app.get('/profile', isLoggedIn, function(req, res) {
+    db.collection('messages').find().toArray((err, result) => {
+      if (err) return console.log(err)
+      res.render('profile.ejs', {
+        user : req.user
+      })
+    })
+  });
+
+  // LOGOUT ==============================
+  app.get('/logout', function(req, res) {
+    req.logout();
+    res.redirect('/');
+  });
+
+  //
+
+  // board routes ===============================================================
+
+  app.post('/messages', (req, res) => {
+    db.collection('messages').save({name: req.body.name, msg: req.body.msg,
+      thumbUp: 0, thumbDown:0}, (err, result) => {
         if (err) return console.log(err)
         console.log('saved to database')
         res.redirect('/profile')
@@ -75,69 +108,67 @@ module.exports = function(app, passport, db) {
     app.delete('/messages', (req, res) => {
       db.collection('messages').findOneAndDelete({name: req.body.name,
         msg: req.body.msg}, (err, result) => {
-        if (err) return res.send(500, err)
-        res.send('Message deleted!')
+          if (err) return res.send(500, err)
+          res.send('Message deleted!')
+        })
       })
-    })
 
-// =============================================================================
-// AUTHENTICATE (FIRST LOGIN) ==================================================
-// =============================================================================
+      // =============================================================================
+      // AUTHENTICATE (FIRST LOGIN) ==================================================
+      // =============================================================================
 
-    // locally --------------------------------
-        // LOGIN ===============================
-        // show the login form
-        app.get('/login', function(req, res) {
-            const loginMessage = req.flash('loginMessage');
-            res.render('login.ejs', { message: loginMessage });
-        });
+      // locally --------------------------------
+      // LOGIN ===============================
+      // show the login form
+      app.get('/login', function(req, res) {
+        const loginMessage = req.flash('loginMessage');
+        res.render('login.ejs', { message: loginMessage });
+      });
 
-        // process the login form
-        app.post('/login', passport.authenticate('local-login', {
-            successRedirect : '/profile', // redirect to the secure profile section
-            failureRedirect : '/login', // redirect back to the signup page if there is an error
-            failureFlash : true // allow flash messages
-        }));
+      // process the login form
+      app.post('/login', passport.authenticate('local-login', {
+        successRedirect : '/patientSearch', // redirect to the secure profile section
+        failureRedirect : '/login', // redirect back to the signup page if there is an error
+        failureFlash : true // allow flash messages
+      }));
 
-        // SIGNUP =================================
-        // show the signup form
-        app.get('/signup', function(req, res) {
+      // SIGNUP =================================
+      // show the signup form
+      app.get('/signup', function(req, res) {
 
-            res.render('signup.ejs', { message: req.flash('signupMessage') });
-        });
+        res.render('signup.ejs', { message: req.flash('signupMessage') });
+      });
 
-        // process the signup form
-        app.post('/signup', passport.authenticate('local-signup', {
+      // process the signup form
+      app.post('/signup', passport.authenticate('local-signup', {
+        successRedirect : '/profile', // redirect to the secure profile section
+        failureRedirect : '/signup', // redirect back to the signup page if there is an error
+        failureFlash : true // allow flash messages
+      }));
 
-            successRedirect : '/login', // redirect to the secure profile section
-            failureRedirect : '/signup', // redirect back to the signup page if there is an error
-            failureFlash : true // allow flash messages
+      // =============================================================================
+      // UNLINK ACCOUNTS =============================================================
+      // =============================================================================
+      // used to unlink accounts. for social accounts, just remove the token
+      // for local account, remove email and password
+      // user account will stay active in case they want to reconnect in the future
 
-        }));
-
-// =============================================================================
-// UNLINK ACCOUNTS =============================================================
-// =============================================================================
-// used to unlink accounts. for social accounts, just remove the token
-// for local account, remove email and password
-// user account will stay active in case they want to reconnect in the future
-
-    // local -----------------------------------
-    app.get('/unlink/local', isLoggedIn, function(req, res) {
+      // local -----------------------------------
+      app.get('/unlink/local', isLoggedIn, function(req, res) {
         var user            = req.user;
         user.local.email    = undefined;
         user.local.password = undefined;
         user.save(function(err) {
-            res.redirect('/profile');
+          res.redirect('/profile');
         });
-    });
+      });
 
-};
+    };
 
-// route middleware to ensure user is logged in
-function isLoggedIn(req, res, next) {
-    if (req.isAuthenticated())
-        return next();
+    // route middleware to ensure user is logged in
+    function isLoggedIn(req, res, next) {
+      if (req.isAuthenticated())
+      return next();
 
-    res.redirect('/');
-}
+      res.redirect('/');
+    }
